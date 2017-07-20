@@ -116,7 +116,8 @@ extension FxAPushMessageHandler {
         guard let deviceName = data?["deviceName"].string else {
             return messageIncomplete(.deviceConnected)
         }
-        return unimplemented(.deviceConnected, with: deviceName)
+        let message = PushMessage.deviceConnected(deviceName)
+        return deferMaybe(message)
     }
 }
 
@@ -125,7 +126,22 @@ extension FxAPushMessageHandler {
         guard let deviceID = data?["id"].string else {
             return messageIncomplete(.deviceDisconnected)
         }
-        return unimplemented(.deviceDisconnected, with: deviceID)
+
+        guard let profile = self.profile as? BrowserProfile else {
+            return deferMaybe(PushMessageError.accountError)
+        }
+
+        let clients = profile.remoteClientsAndTabs
+        let getClientById = clients.getClientWithId(deviceID)
+        
+        return getClientById >>== { device in
+            let message = PushMessage.deviceDisconnected(device?.name)
+            if let _ = device {
+                return clients.deleteClientWithId(deviceID) >>== { _ in deferMaybe(message) }
+            }
+
+            return deferMaybe(message)
+        }
     }
 }
 

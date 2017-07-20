@@ -77,20 +77,69 @@ class SyncDataDisplay {
 
     func displayNotification(_ message: PushMessage? = nil, with error: PushMessageError? = nil) {
         guard let message = message, error == nil else {
-            return displaySentTabNotification()
-        }
-
-        if sentTabs.count > 0 {
-            return displaySentTabNotification()
+            return displayUnknownMessageNotification()
         }
 
         switch message {
+        case .accountVerified:
+            displayAccountVerifiedNotification()
+            break
+        case .deviceConnected(let deviceName):
+            displayDeviceConnectedNotification(deviceName)
+        case .deviceDisconnected(let deviceName):
+            displayDeviceDisconnectedNotification(deviceName)
+        case .thisDeviceDisconnected:
+            displayThisDeviceDisconnectedNotification()
+        case .collectionChanged(let collections):
+            if collections.contains("clients") {
+                displaySentTabNotification()
+            } else {
+                displayUnknownMessageNotification()
+            }
         default:
+            displayUnknownMessageNotification()
             break
         }
     }
+}
 
+extension SyncDataDisplay {
+    func displayDeviceConnectedNotification(_ deviceName: String) {
+        presentNotification(title: Strings.FxAPush_DeviceConnected_title,
+                            body: Strings.FxAPush_DeviceConnected_body,
+                            bodyArg: deviceName)
+    }
 
+    func displayDeviceDisconnectedNotification(_ deviceName: String?) {
+        if let deviceName = deviceName {
+            presentNotification(title: Strings.FxAPush_DeviceDisconnected_title,
+                                body: Strings.FxAPush_DeviceDisconnected_body,
+                                bodyArg: deviceName)
+        } else {
+            // We should never see this branch
+            presentNotification(title: Strings.FxAPush_DeviceDisconnected_title,
+                                body: Strings.FxAPush_DeviceDisconnected_UnknownDevice_body)
+        }
+    }
+
+    func displayThisDeviceDisconnectedNotification() {
+        presentNotification(title: Strings.FxAPush_DeviceDisconnected_ThisDevice_title,
+                            body: Strings.FxAPush_DeviceDisconnected_ThisDevice_body)
+    }
+
+    func displayAccountVerifiedNotification() {
+        presentNotification(title: Strings.SentTab_NoTabArrivingNotification_title, body: Strings.SentTab_NoTabArrivingNotification_body)
+    }
+
+    func displayUnknownMessageNotification() {
+        // if, by any change we haven't dealt with the message, then perhaps we
+        // can recycle it as a sent tab message.
+        if sentTabs.count > 0 {
+            displaySentTabNotification()
+        } else {
+            presentNotification(title: Strings.SentTab_NoTabArrivingNotification_title, body: Strings.SentTab_NoTabArrivingNotification_body)
+        }
+    }
 }
 
 extension SyncDataDisplay {
