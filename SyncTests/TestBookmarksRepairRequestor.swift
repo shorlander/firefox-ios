@@ -469,6 +469,11 @@ open class MockRemoteClientsAndTabs: RemoteClientsAndTabs {
             }?.client)
     }
 
+    open func deleteClientWithId(_ clientID: GUID) -> Success {
+        clientsAndTabs = clientsAndTabs.filter { $0.client.guid != clientID }
+        return succeed()
+    }
+
     open func getClientGUIDs() -> Deferred<Maybe<Set<GUID>>> {
         return deferMaybe(Set<GUID>(optFilter(self.clientsAndTabs.map { $0.client.guid })))
     }

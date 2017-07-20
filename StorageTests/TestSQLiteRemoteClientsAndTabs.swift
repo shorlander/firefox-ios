@@ -96,6 +96,8 @@ open class MockRemoteClientsAndTabs: RemoteClientsAndTabs {
         return deferMaybe(optFilter(self.clientsAndTabs.map { $0.client.guid == guid ? $0.tabs : nil })[0])
     }
 
+    open func deleteClientWithId(_ clientID: GUID) -> Success { return succeed() }
+
     open func deleteCommands() -> Success { return succeed() }
     open func deleteCommands(_ clientGUID: GUID) -> Success { return succeed() }
 
