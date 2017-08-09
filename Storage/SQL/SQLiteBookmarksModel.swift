@@ -63,6 +63,10 @@ open class SQLiteBookmarksModelFactory: BookmarksModelFactory {
         self.direction = direction
     }
 
+    public func factoryForIndex(_ index: Int, inFolder folder: BookmarkFolder) -> BookmarksModelFactory {
+        return self
+    }
+
     fileprivate func withDifferentDirection(_ direction: Direction) -> SQLiteBookmarksModelFactory {
         if self.direction == direction {
             return self
@@ -778,6 +782,24 @@ open class UnsyncedBookmarksFallbackModelFactory: BookmarksModelFactory {
         // This relies on SQLiteBookmarks being the storage for both directions.
         self.localFactory = SQLiteBookmarksModelFactory(bookmarks: bookmarks, direction: .local)
         self.bufferFactory = SQLiteBookmarksModelFactory(bookmarks: bookmarks, direction: .buffer)
+    }
+
+    // This is a special-case class, so here's the special-case behavior to
+    // know how to handle a folder that contains items drawn from different
+    // parts of the database. We look for the special kinds of folders we
+    // nest at the top level, and then we pick a folder to match.
+    public func factoryForIndex(_ index: Int, inFolder folder: BookmarkFolder) -> BookmarksModelFactory{
+        guard let prepended = folder as? PrependedBookmarkFolder else {
+            return self
+        }
+        let i = index - 1     // Drop the prepend.
+        guard let concatenated = prepended.main as? ConcatenatedBookmarkFolder else {
+            return self
+        }
+        if i < concatenated.pivot {
+            return self.bufferFactory   // This comes first.
+        }
+        return self.localFactory
     }
 
     open func modelForFolder(_ folder: BookmarkFolder) -> Deferred<Maybe<BookmarksModel>> {
