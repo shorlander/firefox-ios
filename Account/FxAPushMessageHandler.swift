@@ -132,16 +132,18 @@ extension FxAPushMessageHandler {
             return messageIncomplete(.deviceDisconnected)
         }
 
-        guard let profile = self.profile as? BrowserProfile else {
-            return deferMaybe(PushMessageError.accountError)
-        }
-
         if deviceID == getOurClientId() {
             // We can't disconnect the device from the account until we have 
             // access to the application, so we'll handle this properly in the AppDelegate,
             // by calling the FxALoginHelper.applicationDidDisonnect(application).
             profile.prefs.setBool(true, forKey: PendingAccountDisconnectedKey)
             return deferMaybe(PushMessage.thisDeviceDisconnected)
+        }
+
+        guard let profile = self.profile as? BrowserProfile else {
+            // We can't look up a name in testing, so this is the same as 
+            // not knowing about it.
+            return deferMaybe(PushMessage.deviceDisconnected(nil))
         }
 
         let clients = profile.remoteClientsAndTabs
