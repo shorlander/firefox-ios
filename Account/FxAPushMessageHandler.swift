@@ -10,6 +10,7 @@ import Sync
 import XCGLogger
 
 private let log = Logger.syncLogger
+let PendingAccountDisconnectedKey = "PendingAccountDisconnect"
 
 /// This class provides handles push messages from FxA.
 /// For reference, the [message schema][0] and [Android implementation][1] are both useful resources.
@@ -108,6 +109,10 @@ extension FxAPushMessageHandler {
         // leaving this as unimplemented.
         return unimplemented(.accountVerified)
     }
+
+    func postVerification() -> Success {
+        return profile.syncManager?.syncEverything(why: .push) ?? succeed()
+    }
 }
 
 /// An extension to handle each of the messages.
@@ -131,6 +136,14 @@ extension FxAPushMessageHandler {
             return deferMaybe(PushMessageError.accountError)
         }
 
+        if deviceID == getOurClientId() {
+            // We can't disconnect the device from the account until we have 
+            // access to the application, so we'll handle this properly in the AppDelegate,
+            // by calling the FxALoginHelper.applicationDidDisonnect(application).
+            profile.prefs.setBool(true, forKey: PendingAccountDisconnectedKey)
+            return deferMaybe(PushMessage.thisDeviceDisconnected)
+        }
+
         let clients = profile.remoteClientsAndTabs
         let getClientById = clients.getClientWithId(deviceID)
         
@@ -142,6 +155,10 @@ extension FxAPushMessageHandler {
 
             return deferMaybe(message)
         }
+    }
+
+    fileprivate func getOurClientId() -> GUID {
+        return profile.clientID
     }
 }
 
@@ -214,11 +231,16 @@ enum PushMessage: Equatable {
     case collectionChanged(collections: [String])
     case accountVerified
 
+    // This is returned when we detect that it is us that has been disconnected.
+    case thisDeviceDisconnected
+
     var messageType: PushMessageType {
         switch self {
         case .deviceConnected(_):
             return .deviceConnected
         case .deviceDisconnected(_):
+            return .deviceDisconnected
+        case .thisDeviceDisconnected:
             return .deviceDisconnected
         case .profileUpdated:
             return .profileUpdated
